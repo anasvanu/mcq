@@ -50,6 +50,7 @@ If this folder is not a git repo yet:
 3. Render reads `render.yaml` automatically.
 4. Create service and deploy.
 5. Open the generated Render URL once deploy completes.
+6. Note: on free tier, SQLite data is ephemeral (may reset on restart/sleep). Use a paid Render plan with a disk if you need persistent data.
 
 ### Railway
 
@@ -58,3 +59,4 @@ If this folder is not a git repo yet:
 3. Railway reads `railway.json` and starts with `npm start`.
 4. Add a persistent volume and mount it to `/app/data`.
 5. Deploy and open the generated Railway domain.
+6. If build logs show Node 18, add env var `NIXPACKS_NODE_VERSION=20` and redeploy.
