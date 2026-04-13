@@ -45,14 +45,16 @@ If this folder is not a git repo yet:
 
 ### Render (simple)
 
-1. Connect your GitHub repo in Render.
-2. Create a **Web Service**.
-3. Build command: `npm install && npm run build`
-4. Start command: `npm start`
-5. Add persistent disk mounted at `/opt/render/project/src/data` to keep SQLite data.
+1. Open [Render Dashboard](https://dashboard.render.com/) and click **New +** → **Blueprint**.
+2. Connect repo: `https://github.com/anasvanu/mcq.git`.
+3. Render reads `render.yaml` automatically.
+4. Create service and deploy.
+5. Open the generated Render URL once deploy completes.
 
 ### Railway
 
-1. Connect your GitHub repo.
-2. Set start command `npm start`.
-3. Ensure persistent volume is used for the `data` folder.
+1. Open [Railway Dashboard](https://railway.app/dashboard).
+2. **New Project** → **Deploy from GitHub repo** (`anasvanu/mcq`).
+3. Railway reads `railway.json` and starts with `npm start`.
+4. Add a persistent volume and mount it to `/app/data`.
+5. Deploy and open the generated Railway domain.
