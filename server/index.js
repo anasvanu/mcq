@@ -87,7 +87,7 @@ if (process.env.NODE_ENV === "production") {
   const distPath = path.join(ROOT, "dist");
   if (fs.existsSync(distPath)) {
     app.use(express.static(distPath));
-    app.get("*", (_req, res) => {
+    app.get(/.*/, (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
