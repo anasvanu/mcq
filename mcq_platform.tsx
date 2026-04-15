@@ -860,6 +860,7 @@ function ResultManager({ data, save }) {
 function ExamineeApp({ data, save, user }) {
   const [view, setView] = useState("home");
   const [activeAsgn, setActiveAsgn] = useState(null);
+  const [openReviews, setOpenReviews] = useState({});
 
   const mine = data.assignments.filter(a => a.userId === user.id);
   const done = mine.filter(a => data.submissions.find(s => s.assignmentId === a.id));
@@ -870,6 +871,10 @@ function ExamineeApp({ data, save, user }) {
     save({ ...data, submissions: [...data.submissions, sub] });
     setView("home");
     setActiveAsgn(null);
+  };
+
+  const toggleReview = (assignmentId) => {
+    setOpenReviews(prev => ({ ...prev, [assignmentId]: !prev[assignmentId] }));
   };
 
   if (view === "taking") {
@@ -923,6 +928,8 @@ function ExamineeApp({ data, save, user }) {
         const sub = data.submissions.find(s => s.assignmentId === a.id);
         const isReleased = a.resultRelease === "immediate" || (a.releaseAt && new Date(a.releaseAt) <= new Date());
         const pct = sub && sub.maxScore > 0 ? Math.round((sub.score / sub.maxScore) * 100) : 0;
+        const reviewQuestions = a.questionIds.map(id => data.questions.find(q => q.id === id)).filter(Boolean);
+        const isReviewOpen = !!openReviews[a.id];
         return (
           <div key={a.id} className="card">
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -951,6 +958,44 @@ function ExamineeApp({ data, save, user }) {
             {isReleased && (
               <div style={{ marginTop:10, background:P.offwhite, borderRadius:8, height:8, overflow:"hidden" }}>
                 <div style={{ width:`${pct}%`, height:"100%", background: pct >= 70 ? P.mintM : pct >= 40 ? P.peachM : P.roseM, borderRadius:8 }} />
+              </div>
+            )}
+            {isReleased && sub && (
+              <div style={{ marginTop:10 }}>
+                <button className="btn-ghost btn-sm" onClick={() => toggleReview(a.id)}>
+                  {isReviewOpen ? "Hide review" : "Review answers"}
+                </button>
+              </div>
+            )}
+            {isReleased && sub && isReviewOpen && (
+              <div style={{ marginTop:10, borderTop:`1.5px solid ${P.border}`, paddingTop:10 }}>
+                {reviewQuestions.map((q, idx) => {
+                  const markedIdx = sub.answers?.[q.id];
+                  const correctIdx = q.correct;
+                  const isSkipped = markedIdx === undefined;
+                  const isCorrect = !isSkipped && markedIdx === correctIdx;
+                  const statusBg = isSkipped ? P.yellow : isCorrect ? P.mint : P.rose;
+                  const statusFg = isSkipped ? P.yellowD : isCorrect ? P.mintD : P.roseD;
+                  return (
+                    <div key={q.id} style={{ background:P.offwhite, border:`1px solid ${P.border}`, borderRadius:10, padding:"10px 12px", marginBottom:8 }}>
+                      <div style={{ display:"flex", gap:8, justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                        <p style={{ margin:0, fontSize:13, fontWeight:600, color:P.text, flex:1 }}>Q{idx + 1}. {q.text}</p>
+                        <span className="tag" style={{ background:statusBg, color:statusFg }}>
+                          {isSkipped ? "Skipped" : isCorrect ? "Correct" : "Wrong"}
+                        </span>
+                      </div>
+                      <p style={{ margin:"0 0 3px", fontSize:12, color:P.textSub }}>
+                        Your answer:{" "}
+                        <span style={{ fontWeight:600, color:isSkipped ? P.textSub : isCorrect ? P.mintD : P.roseD }}>
+                          {isSkipped ? "Not answered" : `${OPT_LABELS[markedIdx]}. ${q.options[markedIdx]}`}
+                        </span>
+                      </p>
+                      <p style={{ margin:0, fontSize:12, color:P.mintD, fontWeight:600 }}>
+                        Correct answer: {OPT_LABELS[correctIdx]}. {q.options[correctIdx]}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
