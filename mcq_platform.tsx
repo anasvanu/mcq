@@ -538,6 +538,7 @@ function TestManager({ data, save }) {
 function QuestionManager({ data, save }) {
   const [selTest, setSelTest] = useState("");
   const [form, setForm] = useState({ text:"", options:["","","",""], correct:0, weightage:1 });
+  const [bulkText, setBulkText] = useState("");
   const [err, setErr] = useState("");
   const [toast, setToast] = useState("");
 
@@ -553,6 +554,107 @@ function QuestionManager({ data, save }) {
     setForm({ text:"", options:["","","",""], correct:0, weightage:1 });
     setErr("");
     setToast("Question added!");
+  };
+
+  const bulkAdd = () => {
+    if (!selTest) { setErr("Select a test first"); return; }
+    if (!bulkText.trim()) { setErr("Paste at least one question block"); return; }
+
+    const blocks = bulkText.trim().split(/\n\s*\n+/).map(b => b.trim()).filter(Boolean);
+    const parsed = [];
+
+    for (let bi = 0; bi < blocks.length; bi++) {
+      const block = blocks[bi];
+      const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
+      if (!lines.length) continue;
+
+      let answerToken = "";
+      let weightage = 1;
+      const contentLines = [];
+
+      lines.forEach((line) => {
+        const ansMatch = line.match(/^(answer|correct)\s*[:\-]\s*([A-Da-d]|[1-4])$/i);
+        if (ansMatch) {
+          answerToken = ansMatch[2].toUpperCase();
+          return;
+        }
+        const wtMatch = line.match(/^weight(age)?\s*[:\-]\s*(\d+(\.\d+)?)$/i);
+        if (wtMatch) {
+          weightage = parseFloat(wtMatch[2]) || 1;
+          return;
+        }
+        contentLines.push(line);
+      });
+
+      if (!answerToken) {
+        setErr(`Block ${bi + 1}: missing "Answer: A/B/C/D" line`);
+        return;
+      }
+
+      const questionTextRaw = contentLines[0] || "";
+      const questionText = questionTextRaw.replace(/^\d+[\).:\-]\s*/, "").trim();
+      const optionLines = contentLines.slice(1);
+      if (!questionText) {
+        setErr(`Block ${bi + 1}: missing question text`);
+        return;
+      }
+
+      const options = ["", "", "", ""];
+      let hasLabeledOptions = false;
+      optionLines.forEach((line) => {
+        const m = line.match(/^([A-Da-d])[\).:\-]\s*(.+)$/);
+        if (m) {
+          hasLabeledOptions = true;
+          const idx = "ABCD".indexOf(m[1].toUpperCase());
+          if (idx >= 0) options[idx] = m[2].trim();
+        }
+      });
+
+      if (!hasLabeledOptions) {
+        const plainOptions = optionLines
+          .map(l => l.replace(/^[-*]\s*/, "").trim())
+          .filter(Boolean)
+          .slice(0, 4);
+        plainOptions.forEach((opt, i) => { options[i] = opt; });
+      }
+
+      if (options.some(o => !o)) {
+        setErr(`Block ${bi + 1}: exactly 4 options are required`);
+        return;
+      }
+
+      const correct = /^[1-4]$/.test(answerToken)
+        ? Number(answerToken) - 1
+        : "ABCD".indexOf(answerToken);
+      if (correct < 0 || correct > 3) {
+        setErr(`Block ${bi + 1}: answer must be A-D or 1-4`);
+        return;
+      }
+      if (weightage <= 0) {
+        setErr(`Block ${bi + 1}: weightage must be > 0`);
+        return;
+      }
+
+      parsed.push({
+        id: uid(),
+        testId: selTest,
+        text: questionText,
+        options,
+        correct,
+        weightage,
+        createdAt: nowStr(),
+      });
+    }
+
+    if (!parsed.length) {
+      setErr("No valid questions found");
+      return;
+    }
+
+    save({ ...data, questions: [...data.questions, ...parsed] });
+    setBulkText("");
+    setErr("");
+    setToast(`${parsed.length} question${parsed.length === 1 ? "" : "s"} imported!`);
   };
 
   return (
@@ -594,6 +696,32 @@ function QuestionManager({ data, save }) {
           ))}
           <ErrBox msg={err} />
           <button className="btn-primary" onClick={add} style={{ marginTop:4 }}>Add question</button>
+
+          <hr className="divider" />
+          <h3 style={{ fontSize:15, fontWeight:600, color:P.text, margin:"0 0 8px" }}>Bulk import questions</h3>
+          <p style={{ margin:"0 0 8px", fontSize:12, color:P.textSub }}>
+            Paste multiple blocks separated by a blank line. Include 4 options and an answer line.
+          </p>
+          <textarea
+            value={bulkText}
+            onChange={e => setBulkText(e.target.value)}
+            placeholder={`Question text
+A) Option 1
+B) Option 2
+C) Option 3
+D) Option 4
+Answer: B
+Weightage: 1
+
+Next question text
+A) ...
+B) ...
+C) ...
+D) ...
+Answer: D`}
+            style={{ minHeight:180, resize:"vertical", marginBottom:10, fontFamily:"ui-monospace, SFMono-Regular, Menlo, monospace", fontSize:12 }}
+          />
+          <button className="btn-primary" onClick={bulkAdd}>Import pasted questions</button>
         </div>
 
         <div>
